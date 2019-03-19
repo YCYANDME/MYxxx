@@ -1,0 +1,146 @@
+import com.sun.xml.internal.bind.marshaller.CharacterEscapeHandler;
+
+import javax.xml.bind.JAXB;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.transform.stream.StreamResult;
+import java.io.*;
+import java.sql.*;
+import java.util.*;
+
+public class XmlDom {
+    public static void main(String args[]) throws JAXBException {
+        List lists=new ArrayList();
+        List ss=getAllTabledata("treetable");
+        for (int i = 0; i <ss.size() ; i++) {
+           int id= (int)((Map)ss.get(i)).get("id");
+           String name= (String) ((Map)ss.get(i)).get("name");
+           String path= (String) ((Map)ss.get(i)).get("path");
+           Item item = new Item(id,name,path);
+           lists.add(item);
+        }
+    System.out.println(   ((Map)ss.get(0)).get("id"));
+    System.out.println(ss.toString());
+
+        marshall(lists);//对象转xml
+
+    }
+
+        //对象转xml
+        public static void marshall(List list) throws JAXBException {
+
+        Person person = new Person();
+            person.setId("001");
+            person.setItem(list);
+        JAXB.marshal(person, new StreamResult(new File("peron.xml")));
+        JAXB.marshal(person, System.out);
+
+
+//        JAXBContext context = JAXBContext.newInstance(Person.class);
+//        Marshaller marshaller = context.createMarshaller();
+//        marshaller.setProperty(Marshaller.JAXB_ENCODING, "UTF-8");
+//        // xml格式
+//        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+//        // 去掉生成xml的默认报文头
+//        // marshaller.setProperty(Marshaller.JAXB_FRAGMENT, true);
+//        // 不进行转义字符的处理
+//        marshaller.setProperty(CharacterEscapeHandler.class.getName(), new CharacterEscapeHandler() {
+//            public void escape(char[] ch, int start, int length, boolean isAttVal, Writer writer) throws IOException {
+//                writer.write(ch, start, length);
+//            }
+//        });
+//        // 生成XML文件
+//        marshaller.marshal(person,new StreamResult(new File("peron.xml")));
+
+
+    }
+
+    //从数据库获取数据
+    public static List getAllTabledata(String tablename){
+     List<Map<String, Object>> list = new ArrayList<Map<String,Object>>();
+        //声明Connection对象
+        Connection con;
+        //驱动程序名
+        String driver=getproperties("driver");
+        //URL指向要访问的数据库名mydata
+        String url = getproperties("url");
+        //MySQL配置时的用户名
+        String user = getproperties("username");
+        //MySQL配置时的密码
+        String password = getproperties("password");
+        //遍历查询结果集
+        System.out.println(driver+"****"+url+"***"+user+"**"+password);
+        try {
+            //加载驱动程序
+            Class.forName(driver);
+            //1.getConnection()方法，连接MySQL数据库！！
+            con = DriverManager.getConnection(url,user,password);
+            if(!con.isClosed())
+                System.out.println("Succeeded connecting to the Database!");
+            //2.创建statement类对象，用来执行SQL语句！！
+            Statement statement = con.createStatement();
+            String sql="select * from "+tablename;
+            //3.ResultSet类，用来存放获取的结果集！！
+            ResultSet rs = statement.executeQuery(sql);
+            ResultSetMetaData md = rs.getMetaData(); //获得结果集结构信息,元数据
+            int columnCount = md.getColumnCount();   //获得列数
+            while (rs.next()){
+                Map<String,Object> rowData = new HashMap<String,Object>();
+                for (int i = 1; i <= columnCount; i++) {
+                    rowData.put(md.getColumnName(i), rs.getObject(i));
+                }
+                list.add(rowData);
+
+            }
+//            System.out.println(list.toString());
+            rs.close();
+            con.close();
+        } catch(ClassNotFoundException e) {
+            //数据库驱动类异常处理
+            System.out.println("Sorry,can`t find the Driver!");
+            e.printStackTrace();
+        } catch(SQLException e) {
+            //数据库连接失败异常处理
+            e.printStackTrace();
+        }catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+        return list;
+    }
+    //读取项目内配置文件
+    public static String getproperties(String pram){
+    String path =XmlDom.class.getClassLoader().getResource("").getPath();
+    String filePath = path + "mysql.properties";
+//    System.out.println("**filePath**:"+filePath);
+    String str = null;
+    try
+    {
+        BufferedReader reader=new BufferedReader(new FileReader(filePath));
+
+        try {
+            String temp;
+            while((temp=reader.readLine())!=null)
+            {
+                if(temp.contains(pram+"="))
+                {
+                    str = temp.substring(pram.length()+1);
+                }
+
+            }
+        } catch (IOException e) {
+
+            e.printStackTrace();
+        }
+    } catch (FileNotFoundException e)
+    {
+
+        e.printStackTrace();
+    }
+
+//        System.out.println("**str**:"+str);
+    return str;
+}
+
+}
